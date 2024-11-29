@@ -1,0 +1,13 @@
+from pynput import mouse
+
+################### LEIA ME ###################
+# execute esse código durante programações que envolvam a biblioteca pyautogui e necessidade de informar pontos de coordenadas
+# a variável button pode ser alterada para outros botões do mouse, sugiro utilizar o click do scroll
+# será printada a coordenada em X e Y, separadas por vírgula no terminal
+###############################################
+
+def on_click (x,y,button, pressed):
+    if not pressed and button ==mouse.Button.middle:
+        print (x,",",y)
+with mouse.Listener (on_click=on_click) as coordenadas:
+    coordenadas.join()
