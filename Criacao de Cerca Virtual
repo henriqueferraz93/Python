@@ -1,0 +1,147 @@
+import cv2
+import requests
+import io
+import threading
+import time
+from datetime import datetime
+import numpy as np
+
+########################## LEIA ME ##########################
+
+# sempre verifique as variáveis:
+
+# rtsp, seguir a ordem do que é solicitado para acessar as câmeras por esse protocolo, configurado para INTELBRAS
+# CHAT_ID, para direcionar para qual chat do telegram será enviado o conteúdo
+# CAMERAS, para incluir uma ou mais câmeras e os pontos quem formam o polígono do ROI
+# MIN_CONTOUR_AREA, para diminuir ou aumentar a sensilibildade da detecção
+# DETECTION_INTERVAL, para aumentar ou diminuir ou aumentar a janela de tempo entre uma detecção e outra
+# cv2.imshow, para visualizar o que o código está lendo na câmera, comentar essa linha quando o código for para produção e não carregar a execução
+# elapsed_time, define por quanto tempo o código vai ser executado, calcular o tempo em segundos
+
+#############################################################
+
+# Configurações do Telegram
+TELEGRAM_TOKEN = '7464022309:AAGrjCwPULRNk6aTyJQtUwuXNWSep-BROR8' #bot já configurado, pode ser substituído
+CHAT_ID = ''  # Canal para notificações
+TELEGRAM_API_URL = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto'
+TELEGRAM_MESSAGE_URL = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
+
+# Lista de câmeras e ROIs (polígonos)
+CAMERAS = [
+    {"url": 'rtsp://usuario:senha@ip:554/cam/realmonitor?channel=numerodocanal&subtype=0', "rois": [
+        {"polygon": [(),(),(),(),]},
+        {"polygon": [(),(),(),(),]}
+    ]},
+    
+]
+
+# Parâmetros de detecção
+MIN_CONTOUR_AREA = 300  # Mínima área do contorno para ser considerada movimento
+DETECTION_INTERVAL = 35  # Intervalo em segundos entre detecções
+
+# Flag global para controle de encerramento
+stop_program = False
+
+# Função para enviar foto pelo Telegram
+def send_photo_to_telegram(photo_bytes):
+    try:
+        files = {'photo': ('detected_motion.jpg', photo_bytes, 'image/jpeg')}
+        data = {'chat_id': CHAT_ID}
+        response = requests.post(TELEGRAM_API_URL, files=files, data=data, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Erro ao enviar foto para o Telegram: {e}")
+
+# Função para enviar mensagem de texto pelo Telegram
+def send_message_to_telegram(message):
+    try:
+        data = {'chat_id': CHAT_ID, 'text': message}
+        response = requests.post(TELEGRAM_MESSAGE_URL, data=data, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Erro ao enviar mensagem para o Telegram: {e}")
+
+# Função para processar uma câmera
+def process_camera(camera_url, rois, camera_id):
+    global stop_program
+    while not stop_program:
+        try:
+            print(f"Conectando à câmera {camera_id}: {camera_url}")
+            video = cv2.VideoCapture(camera_url)
+            if not video.isOpened():
+                raise ValueError(f"Não foi possível conectar à câmera {camera_id}. Retentando...")
+
+            fgbg = cv2.createBackgroundSubtractorMOG2()
+            last_detection_time = time.time()
+
+            while not stop_program:
+                ret, img = video.read()
+                if not ret:
+                    print(f"Erro ao ler da câmera {camera_id}. Reconectando...")
+                    break
+
+                mask = fgbg.apply(img)
+                _, thresh = cv2.threshold(mask, 250, 255, cv2.THRESH_BINARY)
+                contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                for contour in contours:
+                    if cv2.contourArea(contour) > MIN_CONTOUR_AREA:
+                        x, y, w, h = cv2.boundingRect(contour)
+                        center = (x + w // 2, y + h // 2)
+
+                        for roi in rois:
+                            polygon = np.array(roi["polygon"], dtype=np.int32)
+                            if cv2.pointPolygonTest(polygon, center, False) >= 0:
+                                current_time = time.time()
+                                if current_time - last_detection_time > DETECTION_INTERVAL:
+                                    last_detection_time = current_time
+                                    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+                                    _, img_encoded = cv2.imencode('.jpg', img)
+                                    img_bytes = io.BytesIO(img_encoded.tobytes())
+                                    send_photo_to_telegram(img_bytes.getvalue())
+
+                                    now = datetime.now()
+                                    message = f"{now.strftime('%Y-%m-%d %H:%M:%S')} - Movimento detectado na câmera {camera_id}."
+                                    send_message_to_telegram(message)
+
+                for roi in rois:
+                    polygon = np.array(roi["polygon"], dtype=np.int32)
+                    cv2.polylines(img, [polygon], isClosed=True, color=(0, 255, 0), thickness=2)
+                    # comente a linha abaixo para não abrir uma janela com a câmera real time
+                    #cv2.imshow(f'Camera {camera_id}', img)
+
+                if cv2.waitKey(1) & 0xFF == 27:  # Pressione 'Esc' para sair
+                    stop_program = True
+                    break
+        except Exception as e:
+            print(f"Erro na câmera {camera_id}: {e}. Reestabelecendo em 5 segundos...")
+            time.sleep(5)
+        finally:
+            video.release()
+            cv2.destroyAllWindows()
+
+# Início do programa
+start_time = time.time()  # Marca o início
+
+# Iniciar threads para processar todas as câmeras
+threads = []
+for index, camera in enumerate(CAMERAS, start=1):
+    thread = threading.Thread(target=process_camera, args=(camera["url"], camera["rois"], index))
+    thread.daemon = True
+    thread.start()
+    threads.append(thread)
+
+# Verificar se o programa deve encerrar
+try:
+    while not stop_program:
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= 60:  # Verifica se 60 segundos já passaram
+            stop_program = True
+        time.sleep(0.1)
+finally:
+    for thread in threads:
+        thread.join()
+    cv2.destroyAllWindows()
+
+print("Programa encerrado após 60 segundos.")
