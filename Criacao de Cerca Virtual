@@ -21,7 +21,7 @@ import numpy as np
 #############################################################
 
 # Configurações do Telegram
-TELEGRAM_TOKEN = '7464022309:AAGrjCwPULRNk6aTyJQtUwuXNWSep-BROR8' #bot já configurado, pode ser substituído
+TELEGRAM_TOKEN = '' #bot já configurado, pode ser substituído
 CHAT_ID = ''  # Canal para notificações
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto'
 TELEGRAM_MESSAGE_URL = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
