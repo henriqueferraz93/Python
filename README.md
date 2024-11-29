@@ -8,3 +8,4 @@ Serão abordadas as utilizações de bibliotecas Python, portante, certifique-se
 - Telegram
 - Pyinstaller
 - Opencv-Python
+- Pymput
