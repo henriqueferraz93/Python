@@ -1,0 +1,9 @@
+import pandas as pd
+
+# Ler base
+tabela = pd.read_excel("excel/lojaspetz.xlsx", sheet_name=0)  
+print(tabela)
+
+for linha in tabela.index:
+    ID = tabela.loc[linha, 'ID']  
+    sigla = tabela.loc[linha, 'SIGLA'] 
