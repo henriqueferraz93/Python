@@ -1,0 +1,38 @@
+import cv2
+from ultralytics import YOLO
+
+########################## LEIA ME ##########################
+
+# trata-se de um teste simples para verificar se a biblioteca consegue ser lida e o código ser finalizado ao pressionar ESC
+
+#############################################################
+
+modelo = YOLO('yolov8n.pt')
+
+# Abrir a captura de vídeo
+cap = cv2.VideoCapture(0)
+
+while True:
+    # Captura de um quadro
+    ret, frame = cap.read()
+    
+    if not ret:
+        break
+    
+    # Realizar a previsão no quadro capturado
+    results = modelo.predict(source=frame)
+    
+    # A renderização dos resultados modifica a imagem diretamente
+    # Então podemos pegar diretamente a primeira imagem processada
+    img = results[0].plot()  # Usando 'plot()' para renderizar as detecções no quadro
+
+    # Exibir o quadro com as previsões
+    cv2.imshow('Resultado', img)
+    
+    # Se a tecla ESC (código 27) for pressionada, sai do loop
+    if cv2.waitKey(1) == 27:  # 27 é o código da tecla ESC
+        break
+
+# Libera a captura de vídeo e fecha as janelas abertas
+cap.release()
+cv2.destroyAllWindows()
