@@ -1,0 +1,75 @@
+import tkinter as tk
+from tkinter import messagebox
+import subprocess
+import os
+
+########################## LEIA ME ##########################
+
+# Código criado para estruturar uma interface/front-end para código, rotinas, executáveis, scripts e outras opções
+# dando uma caracteristica visual para demais usuários
+
+#############################################################
+
+
+# Função que será chamada pelo Botão 1
+def botao1_funcao():
+    try:
+        # Verifica se está no Windows
+        if os.name == 'nt':  # 'nt' indica Windows
+            messagebox.showinfo("Botão 1", "mensagem após clicar")
+            # Executa o script da cerca no Windows
+            subprocess.run(['cerca_abordagem_tiet.exe'], check=True)
+        else:
+            messagebox.showwarning("Aviso", "Este script .exe só pode ser executado no Windows.")
+    except subprocess.CalledProcessError as e:
+        messagebox.showerror("Erro", f"Ocorreu um erro ao executar a cerca, verifique se tudo está devidamente conectado:\n{e}")
+
+def botao2_funcao():
+    messagebox.showinfo("Botão 2", "mensagem após clicar")
+
+def sair():
+    janela.destroy()
+
+# Criar a janela principal
+janela = tk.Tk()
+janela.title("Título da janela")
+janela.geometry("600x800")  # Definir o tamanho da janela
+
+# Carregar a imagem (se estiver em PNG, você precisa da biblioteca Pillow)
+# Use PhotoImage apenas com imagens suportadas nativamente pelo Tkinter (GIF, PGM/PPM)
+try:
+    logo_image = tk.PhotoImage(file="imagem.gif")  # Se precisar usar PNG, instale o Pillow e use Image.open
+except tk.TclError:
+    logo_image = None
+    messagebox.showerror("Erro", "Não foi possível carregar a imagem. Verifique o formato e o caminho.")
+
+# Criar parágrafos com informações (usando Label)
+
+if logo_image:  # Se a imagem foi carregada com sucesso
+    informacoes0 = tk.Label(janela, image=logo_image, width=333, height=333)
+    informacoes0.pack(pady=2)
+
+informacoes1 = tk.Label(janela, text="Título",
+                        wraplength=600, justify="center", font=("Arial", 20))
+informacoes1.pack(pady=10)
+
+informacoes2 = tk.Label(janela, text="Sub-título",
+                        wraplength=600, justify="center", font=("Arial", 15))
+informacoes2.pack(pady=10)
+
+informacoes3 = tk.Label(janela, text="observações",
+                        wraplength=600, justify="center", font=("Arial", 15))
+informacoes3.pack(pady=10)
+
+# Criar os botões
+botao1 = tk.Button(janela, text="texto do botão 1", command=botao1_funcao, font=("Arial", 16))
+botao1.pack(pady=10)
+
+botao2 = tk.Button(janela, text="texto do botão 2", command=botao2_funcao, font=("Arial", 16))
+botao2.pack(pady=10)
+
+sair_botao = tk.Button(janela, text="Sair", command=sair, font=("Arial", 16))
+sair_botao.pack(pady=10)
+
+# Executar a janela
+janela.mainloop()
