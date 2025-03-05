@@ -1,0 +1,123 @@
+import cv2
+import numpy as np
+import time
+from ultralytics import YOLO
+import datetime
+import pandas as pd
+
+########################## LEIA ME ##########################
+
+# sempre verifique as variáveis:
+
+# configurado para INTELBRAS
+# roi_points, define as coordenadas do desenho do seu polígono
+# cap, câmera onde o roi seá lido para deteção, rtsp configurado para INTELBRAS
+# intervalo_detecao, para aumentar ou diminuir a inter detecção
+# cv2.imshow, comente essa linha caso não queria exibir uma janela com a imagem
+# nome_arquivo, se atente ao nome e local do salvamento
+
+# para finalizar a execução, tecle "Q"
+
+#############################################################
+
+
+# Carregar o modelo YOLO
+modelo = YOLO('yolov8n.pt')
+
+# Inicializar captura de vídeo
+cap = cv2.VideoCapture(0) # teste com webcam
+#cap = cv2.VideoCapture('rtsp://usuario:senha@ip:554/cam/realmonitor?channel=numerocanal&subtype=0') # usando protocolo rtsp
+
+# Definir os pontos do polígono (ROI)
+roi_points = np.array([[1,1], [237,1], [237,470], [1, 470]], np.int32)
+roi_points = roi_points.reshape((-1, 1, 2))
+
+# Carregar nomes das classes do YOLO
+class_names = modelo.model.names
+
+# Controle de tempo para detecção (a cada 8 segundos)
+ultimo_tempo = time.time()
+intervalo_detecao = 8  # Segundos
+
+# Lista para armazenar as detecções
+detecções = []
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # Criar uma máscara preta com o mesmo tamanho da imagem
+    mask = np.zeros_like(frame, dtype=np.uint8)
+
+    # Preencher o polígono com branco (255) para definir a ROI
+    cv2.fillPoly(mask, [roi_points], (255, 255, 255))
+
+    # Aplicar a máscara na imagem original
+    masked_frame = cv2.bitwise_and(frame, mask)
+
+    # Verificar se já passaram 8 segundos desde a última detecção
+    tempo_atual = time.time()
+    if tempo_atual - ultimo_tempo >= intervalo_detecao:
+        ultimo_tempo = tempo_atual  # Atualiza o tempo da última detecção
+
+        # Fazer a predição apenas na área mascarada
+        results = modelo.predict(source=masked_frame, show=False, verbose=False)
+
+        detected_objects = []  # Lista para armazenar os objetos detectados dentro do ROI
+
+        # Processar as detecções
+        for result in results:
+            for box, cls in zip(result.boxes.xyxy, result.boxes.cls):
+                x1, y1, x2, y2 = map(int, box)
+                class_id = int(cls)
+                class_name = class_names[class_id]
+
+                # Ponto central da bounding box
+                center_x, center_y = (x1 + x2) // 2, (y1 + y2) // 2
+
+                # Verificar se o centro da bounding box está dentro do ROI
+                if cv2.pointPolygonTest(roi_points, (center_x, center_y), False) >= 0:
+                    # Desenhar o contorno do objeto detectado
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    cv2.putText(frame, class_name, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+
+                    # Adicionar detecção à lista de objetos detectados
+                    detected_objects.append(f"{class_name} ({x1}, {y1}, {x2}, {y2})")
+
+                    # Adicionar à lista de detecções para salvar no Excel mais tarde
+                    detecção = {
+                        'Classe': class_name,
+                        'Coordenadas': f"({x1}, {y1}, {x2}, {y2})",
+                        'Data e Hora': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    detecções.append(detecção)
+
+        # Printar os objetos detectados dentro do ROI, com data e hora
+        if detected_objects:
+            for obj in detected_objects:
+                print(f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {obj}")
+
+    # Desenhar a ROI na imagem original
+    cv2.polylines(frame, [roi_points], isClosed=True, color=(0, 255, 0), thickness=2)
+
+    # Exibir o resultado
+    cv2.imshow("Leitura da camera", frame)
+
+    # Fechar ao pressionar "Q"
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Liberar recursos
+cap.release()
+cv2.destroyAllWindows()
+
+# Gerar o nome do arquivo com a data e hora atual
+data_e_hora_atual = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+nome_arquivo = f"pasta/nome do arquivo {data_e_hora_atual}.xlsx"
+
+# Salvar as detecções no arquivo Excel com o nome gerado
+if detecções:
+    df = pd.DataFrame(detecções)
+    df.to_excel(nome_arquivo, index=False)
+    print(f"Arquivo Excel '{nome_arquivo}' gerado com sucesso!")
