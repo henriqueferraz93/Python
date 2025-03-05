@@ -1,9 +1,11 @@
 import pandas as pd
 
 # Ler base
-tabela = pd.read_excel("excel/lojaspetz.xlsx", sheet_name=0)  
+tabela = pd.read_excel("nome do arquivo.xlsx", sheet_name=0) #sheet_name é a guia que precisa ser lida, 0=primeira, 1= segunda... 
 print(tabela)
 
-for linha in tabela.index:
-    ID = tabela.loc[linha, 'ID']  
-    sigla = tabela.loc[linha, 'SIGLA'] 
+# Criando um loop com esse arquivo
+# Pode ser útil para criar um delimitador de repetições e utilizar o valor como variável no código
+
+for linha in tabela.index: 
+    sigla = tabela.loc[linha, 'nome da coluna'] 
