@@ -9,3 +9,4 @@ Serão abordadas as utilizações de bibliotecas Python, portanto, certifique-se
 - Pyinstaller
 - Opencv-Python
 - Pymput
+- Ultralytics
