@@ -17,12 +17,13 @@ import pandas as pd
 # nome_arquivo, se atente ao nome e local do salvamento
 
 # para finalizar a execução, tecle "Q"
+# ajuste a biblioteca conforme a versão, da mais leve para a mais pesada: n,s,m,b,l,x
 
 #############################################################
 
 
 # Carregar o modelo YOLO
-modelo = YOLO('yolov8n.pt')
+modelo = YOLO('yolov10s.pt')
 
 # Inicializar captura de vídeo
 cap = cv2.VideoCapture(0) # teste com webcam
@@ -37,7 +38,7 @@ class_names = modelo.model.names
 
 # Controle de tempo para detecção (a cada 8 segundos)
 ultimo_tempo = time.time()
-intervalo_detecao = 8  # Segundos
+intervalo_detecao = 0.2  # Segundos
 
 # Lista para armazenar as detecções
 detecções = []
@@ -114,7 +115,7 @@ cv2.destroyAllWindows()
 
 # Gerar o nome do arquivo com a data e hora atual
 data_e_hora_atual = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-nome_arquivo = f"pasta/nome do arquivo {data_e_hora_atual}.xlsx"
+nome_arquivo = f"excel/arquivo {data_e_hora_atual}.xlsx"
 
 # Salvar as detecções no arquivo Excel com o nome gerado
 if detecções:
